@@ -1,0 +1,117 @@
+package logger
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/evgen6501-star/golang-subscriptions/internal/config"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+// type LogLevel string
+
+// const (
+// 	LevelDebug LogLevel = "debug"
+// 	LevelInfo  LogLevel = "info"
+// 	LevelWarn  LogLevel = "warn"
+// 	LevelError LogLevel = "error"
+// )
+
+// type Logger struct {
+// 	level  LogLevel
+// 	logger *log.Logger
+// }
+
+// func NewLogger(level string) *Logger {
+// 	logLevel := LevelInfo
+
+// 	switch level {
+// 	case "debug":
+// 		logLevel = LevelDebug
+// 	case "info":
+// 		loglevel = LevelInfo
+// 	case "warn":
+// 		loglevel = LevelWarn
+// 	case "error":
+// 		loglevel = LevelError
+// 	}
+// 	return &Logger{
+// 		level:  logLevel,
+// 		logger: log.New(os.Stdout, "", 0),
+// 	}
+// }
+// func (l *Logger) log(level LogLevel, msg string, keysAndValues ...interface{}) {
+// 	timestamp := time.Now()
+// 	logMsg := fmt.Sprintf("%s [%s] %s", timestap, level, msg)
+// 	func
+// }
+
+// func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
+// 	if l.level <= LevelDebug {
+// 		l.log(LevelDebug, msg, keysAndValues...)
+// 	}
+// }
+
+type Logger struct {
+	*zap.Logger
+	file *os.File
+}
+
+func NewLogger(config config.LogConfig) (*Logger, error) {
+	zapLvl := zap.NewAtomicLevel()
+	if err := zapLvl.UnmarshalText([]byte(config.Level)); err != nil {
+		return nil, fmt.Errorf("unmarshal log level: %w", err)
+	}
+	if err := os.MkdirAll(config.Folder, 0755); err != nil {
+		return nil, fmt.Errorf("mkdir logger folder ERROR : %w", err)
+	}
+	timestamp := time.Now().UTC().Format("2006-01-02T15-04-05.000000")
+	logFilePth := filepath.Join(
+		config.Folder,
+		fmt.Sprintf("%s.log", timestamp),
+	)
+	logFile, err := os.OpenFile(logFilePth, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, fmt.Errorf(" bad open log file : %w", err)
+
+	}
+	zapConfig := zap.NewDevelopmentEncoderConfig()
+	zapConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02T15:04:05.000000")
+
+	zapEncoder := zapcore.NewConsoleEncoder(zapConfig)
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(zapEncoder, zapcore.AddSync(os.Stdout), zapLvl),
+		zapcore.NewCore(zapEncoder, zapcore.AddSync(logFile), zapLvl),
+	)
+	zapLogger := zap.New(core, zap.AddCaller())
+
+	return &Logger{
+		Logger: zapLogger,
+		file:   logFile,
+	}, nil
+}
+func (l *Logger) With(field ...zap.Field) *Logger {
+	return &Logger{
+		Logger: l.Logger.With(field...),
+		file:   l.file,
+	}
+}
+
+func (l *Logger) Close() {
+	if err := l.file.Close(); err != nil {
+		fmt.Println("FAILED to close logger : %", err)
+	}
+}
+
+func FromContext(ctx context.Context) *Logger {
+	log, ok := ctx.Value("log").(*Logger)
+	if !ok {
+		panic("no logger in context")
+	}
+	return log
+}
