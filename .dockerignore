@@ -1,0 +1,15 @@
+
+out/
+logs/
+*.log
+
+.git/
+.gitignore
+
+*.tmp
+*.swp
+*.swo
+
+README.md
+Makefile
+docker-compose.yaml
