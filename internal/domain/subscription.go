@@ -16,7 +16,6 @@ type Subscription struct {
 }
 
 func NewSubscription(serviceName string, price int, userID uuid.UUID, startDate time.Time) *Subscription {
-	// now := time.Now()
 	return &Subscription{
 		ID:          uuid.New(),
 		ServiceName: serviceName,

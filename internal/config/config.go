@@ -12,7 +12,6 @@ type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
 	Log      LogConfig
-	// App      AppConfig
 }
 type ServerConfig struct {
 	Port string `envconfig:"PORT" required:"true"`

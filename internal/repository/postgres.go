@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/evgen6501-star/golang-subscriptions/internal/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 type SubscriptionRepoPostgres struct {
@@ -23,6 +25,69 @@ func NewSubscriptionRepoPostgres(db *pgx.Conn, log *logger.Logger) *Subscription
 		db:     db,
 		logger: log,
 	}
+}
+func (r *SubscriptionRepoPostgres) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `
+	DELETE FROM subscriptions
+	WHERE id = $1
+	RETURNING id
+	`
+	var delitedID uuid.UUID
+	err := r.db.QueryRow(ctx, query, id).Scan(&delitedID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("subscription id notfound %s", id)
+		}
+		r.logger.Error("failed to delete subscriptins", zap.Error(err))
+		return fmt.Errorf("failed to delete subscriptins %w", err)
+
+	}
+	r.logger.Info("Подписка удалена")
+	return nil
+}
+func (r *SubscriptionRepoPostgres) Update(ctx context.Context, sub *domain.Subscription) error {
+	if sub == nil {
+		return fmt.Errorf("subscription cannot be nil")
+
+	}
+	var endDate sql.NullTime
+	if sub.EndDate != nil {
+		endDate = sql.NullTime{
+			Time:  *sub.EndDate,
+			Valid: true,
+		}
+	}
+	query := `
+    UPDATE subscriptions 
+    SET
+        service_name = $1,
+        price = $2,
+        user_id = $3,
+        start_date = $4,
+        end_date = $5
+    WHERE id = $6
+    RETURNING id
+`
+	var returnedID uuid.UUID
+	err := r.db.QueryRow(ctx, query,
+		sub.ServiceName,
+		sub.Price,
+		sub.UserID,
+		sub.StartDate,
+		endDate,
+		sub.ID,
+	).Scan(&returnedID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("subscription with id %s not found", sub.ID)
+
+		}
+		r.logger.Error("failed to update subscription")
+		return fmt.Errorf("failed to update subscription %w", err)
+	}
+	r.logger.Info("подписка обновлена", zap.String("id", sub.ID.String()))
+	return nil
+
 }
 
 func (r *SubscriptionRepoPostgres) Create(ctx context.Context, sub *domain.Subscription) error {

@@ -24,6 +24,18 @@ func NewSubscriptionHandler(svc service.SubscriptionService, log *logger.Logger)
 		logger:  log,
 	}
 }
+
+// GetListHandler godoc
+// @Summary      Получить список подписок
+// @Description  Возвращает список всех подписок с пагинацией
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        limit  query  int  false  "Количество записей на страницу"  default(10)
+// @Param        offset query  int  false  "Смещение"                        default(0)
+// @Success      200  {object}  map[string]interface{}  "список подписок"
+// @Failure      500  {object}  map[string]string
+// @Router       /subscriptions [get]
 func (h *SubscriptionHandler) GetListHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
@@ -44,6 +56,93 @@ func (h *SubscriptionHandler) GetListHandler(w http.ResponseWriter, r *http.Requ
 	}
 	h.sendJson(w, response, http.StatusOK)
 }
+
+// DeletSubscriptionHandler godoc
+// @Summary      Удалить подписку
+// @Description  Удаляет подписку по ID
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "UUID подписки"
+// @Success      204  "No Content"
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /subscriptions/{id} [delete]
+func (h *SubscriptionHandler) DeletSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+	log.Debug("вызов DeletSubscriptionHandler")
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		h.sendError(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if err := h.service.Delete(ctx, id); err != nil {
+		log.Error("failed to delete subscription", zap.Error(err))
+		h.sendError(w, "failed to delete subscription", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+
+}
+
+// UpdateSubscriptionHandler godoc
+// @Summary      Обновить подписку
+// @Description  Обновляет существующую подписку по ID
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        id       path   string                           true  "UUID подписки"
+// @Param        request  body   dto.UpdateSubscriptionRequest    true  "Данные для обновления"
+// @Success      200      {object}  dto.SubscriptionResponse
+// @Failure      400      {object}  map[string]string
+// @Failure      404      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Router       /subscriptions/{id} [put]
+func (h *SubscriptionHandler) UpdateSubscriptionHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+	log.Debug("вызов UpdateSubscriptionHandler")
+	idStr := r.PathValue("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		h.sendError(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	var req service.UpdateSubscriptionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.sendError(w, "invadlid reques body", http.StatusBadRequest)
+		return
+
+	}
+	sub, err := h.service.Update(ctx, id, &req)
+	if err != nil {
+		if err.Error() == "subscription not found" {
+			h.sendError(w, "subscription not found0.", http.StatusNotFound)
+			return
+		}
+		log.Error("failed update subscription", zap.Error(err))
+		return
+	}
+	h.sendJson(w, sub, http.StatusOK)
+
+}
+
+// GetTotalPriceHandler godoc
+// @Summary      Подсчитать сумму подписок за период
+// @Description  Возвращает суммарную стоимость подписок за выбранный период с опциональной фильтрацией
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        start_date    query  string  true  "Дата начала (MM-YYYY)"
+// @Param        end_date      query  string  true  "Дата окончания (MM-YYYY)"
+// @Param        user_id       query  string  false "ID пользователя"
+// @Param        service_name  query  string  false "Название сервиса"
+// @Success      200  {object}  map[string]interface{}  "total_price, currency"
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /subscriptions/total [get]
 func (h *SubscriptionHandler) GetTotalPriceHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
@@ -79,7 +178,7 @@ func (h *SubscriptionHandler) GetTotalPriceHandler(w http.ResponseWriter, r *htt
 
 	}
 	var serviceName *string
-	if sn := r.URL.Query().Get("sevice_name"); sn != "" {
+	if sn := r.URL.Query().Get("service_name"); sn != "" {
 		serviceName = &sn
 	}
 	req := service.TotalPriceRequest{
@@ -101,6 +200,17 @@ func (h *SubscriptionHandler) GetTotalPriceHandler(w http.ResponseWriter, r *htt
 	h.sendJson(w, response, http.StatusOK)
 }
 
+// GetByIDHandler godoc
+// @Summary      Получить подписку по ID
+// @Description  Возвращает подписку по её UUID
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "UUID подписки"
+// @Success      200  {object}  dto.SubscriptionResponse
+// @Failure      400  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Router       /subscriptions/{id} [get]
 func (h *SubscriptionHandler) GetByIDHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
@@ -128,6 +238,18 @@ func (h *SubscriptionHandler) GetByIDHandler(w http.ResponseWriter, r *http.Requ
 	h.sendJson(w, sub, http.StatusOK)
 
 }
+
+// CreateSubscription godoc
+// @Summary      Создать новую подписку
+// @Description  Создаёт запись о подписке для пользователя
+// @Tags         subscriptions
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.CreateSubscriptionRequest true "Данные подписки"
+// @Success      201  {object}  dto.SubscriptionResponse
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /subscriptions [post]
 func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
@@ -162,12 +284,7 @@ func (h *SubscriptionHandler) CreateSubscription(w http.ResponseWriter, r *http.
 		}
 		endDate = &parsed
 	}
-	// endDate, err := time.Parse("01-2006", req.EndDate)
-	// if err != nil {
 
-	// 	h.sendError(w, "invalid end date fomat", http.StatusBadRequest)
-	// 	return SeviceName
-	// }ServiceName
 	createReq := &service.CreateSubscriptionRequest{
 		ServiceName: req.ServiceName,
 		Price:       req.Price,
@@ -203,23 +320,33 @@ func (h *SubscriptionHandler) Routes() []server.Route {
 	return []server.Route{
 		{
 			Method:  http.MethodPost,
-			Path:    "/subscribetions",
+			Path:    "/subscriptions",
 			Handler: h.CreateSubscription,
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/subscribetions/{id}",
+			Path:    "/subscriptions/{id}",
 			Handler: h.GetByIDHandler,
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/subscribetions",
+			Path:    "/subscriptions",
 			Handler: h.GetListHandler,
 		},
 		{
 			Method:  http.MethodGet,
-			Path:    "/subscribetions/total",
+			Path:    "/subscriptions/total",
 			Handler: h.GetTotalPriceHandler,
+		},
+		{
+			Method:  http.MethodPut,
+			Path:    "/subscriptions/{id}",
+			Handler: h.UpdateSubscriptionHandler,
+		},
+		{
+			Method:  http.MethodDelete,
+			Path:    "/subscriptions/{id}",
+			Handler: h.DeletSubscriptionHandler,
 		},
 	}
 }

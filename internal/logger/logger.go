@@ -12,50 +12,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// type LogLevel string
-
-// const (
-// 	LevelDebug LogLevel = "debug"
-// 	LevelInfo  LogLevel = "info"
-// 	LevelWarn  LogLevel = "warn"
-// 	LevelError LogLevel = "error"
-// )
-
-// type Logger struct {
-// 	level  LogLevel
-// 	logger *log.Logger
-// }
-
-// func NewLogger(level string) *Logger {
-// 	logLevel := LevelInfo
-
-// 	switch level {
-// 	case "debug":
-// 		logLevel = LevelDebug
-// 	case "info":
-// 		loglevel = LevelInfo
-// 	case "warn":
-// 		loglevel = LevelWarn
-// 	case "error":
-// 		loglevel = LevelError
-// 	}
-// 	return &Logger{
-// 		level:  logLevel,
-// 		logger: log.New(os.Stdout, "", 0),
-// 	}
-// }
-// func (l *Logger) log(level LogLevel, msg string, keysAndValues ...interface{}) {
-// 	timestamp := time.Now()
-// 	logMsg := fmt.Sprintf("%s [%s] %s", timestap, level, msg)
-// 	func
-// }
-
-// func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
-// 	if l.level <= LevelDebug {
-// 		l.log(LevelDebug, msg, keysAndValues...)
-// 	}
-// }
-
 type Logger struct {
 	*zap.Logger
 	file *os.File

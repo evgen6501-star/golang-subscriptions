@@ -13,6 +13,16 @@ type SubscriptionService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error)
 	List(ctx context.Context, limit, offset int) ([]*domain.Subscription, error)
 	GetTotalPrice(ctx context.Context, req TotalPriceRequest) (int, error)
+	Update(ctx context.Context, id uuid.UUID, req *UpdateSubscriptionRequest) (*domain.Subscription, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type UpdateSubscriptionRequest struct {
+	ServiceName *string    `json:"service_name,omitempty"`
+	Price       *int       `json:"price,omitempty"`
+	UserID      *uuid.UUID `json:"user_id,omitempty"`
+	StartDate   *time.Time `json:"start_date,omitempty"`
+	EndDate     *time.Time `json:"end_date,omitempty"`
 }
 
 type CreateSubscriptionRequest struct {

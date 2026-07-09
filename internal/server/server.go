@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"net/http"
 
+	_ "github.com/evgen6501-star/golang-subscriptions/docs"
 	"github.com/evgen6501-star/golang-subscriptions/internal/config"
 	"github.com/evgen6501-star/golang-subscriptions/internal/logger"
 	"github.com/evgen6501-star/golang-subscriptions/internal/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
 
@@ -20,8 +22,18 @@ type HTTPServer struct {
 }
 
 func NewHttpServer(config config.ServerConfig, log *logger.Logger, middle ...middleware.Middleware) *HTTPServer {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./docs/swagger.json")
+	})
+
+	mux.Handle("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+
 	return &HTTPServer{
-		mux:        http.NewServeMux(),
+		mux:        mux,
 		config:     config,
 		log:        log,
 		middleware: middle,

@@ -17,6 +17,19 @@ import (
 	"go.uber.org/zap"
 )
 
+// cmd/main.go
+
+// @title           Subscription Service API
+// @version         1.0
+// @description      Сервис для управления подписками пользователей
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.email  support@example.com
+// @servers  http://localhost:8080/api/v1
+// @host      localhost:8080
+// @BasePath  /api/v1
+
 func main() {
 
 	cfg, err := config.LoadConfig()
@@ -53,7 +66,7 @@ func main() {
 	subRouters := subHTTP.Routes()
 	apiVersRouter := server.NewApiVersionRouter(server.ApiVers1)
 	apiVersRouter.RegisterRoutes(subRouters...)
-	httpServer := server.NewHttpServer(config.NewServConfigMust(), log, middleware.RequestID(), middleware.Logger(log), middleware.Trace())
+	httpServer := server.NewHttpServer(config.NewServConfigMust(), log, middleware.RequestID(), middleware.Logger(log))
 	httpServer.RegisterAPIRouters(apiVersRouter)
 	if err := httpServer.Run(ctx); err != nil {
 		log.Error("Http server run error", zap.Error(err))

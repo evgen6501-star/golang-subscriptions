@@ -13,4 +13,6 @@ type SubscriptionReposytory interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Subscription, error)
 	List(ctx context.Context, limit, offset int) ([]*domain.Subscription, error)
 	GetTotalPrice(ctx context.Context, userID *uuid.UUID, serviseName *string, startDate, endDate time.Time) (int, error)
+	Update(ctx context.Context, sub *domain.Subscription) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
